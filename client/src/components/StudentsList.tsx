@@ -103,23 +103,23 @@ const StudentsList: React.FC<StudentsListProps> = ({
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">{clinicName}</h1>
-            <p className="text-gray-600">Lista de alumnos</p>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-800">{clinicName}</h1>
+            <p className="text-sm text-gray-600">Lista de alumnos</p>
           </div>
           <button
             onClick={onAddStudent}
-            className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+            className="w-full md:w-auto bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
           >
             <Plus size={20} />
             Agregar alumno
           </button>
         </div>
 
-        <div className="flex gap-4 mb-4">
+        <div className="flex flex-col md:flex-row gap-4 mb-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
             <input
@@ -133,7 +133,7 @@ const StudentsList: React.FC<StudentsListProps> = ({
           <select
             value={selectedGroup}
             onChange={(e) => setSelectedGroup(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            className="w-full md:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           >
             <option>Todos los grupos</option>
             <option>Lunes a Miércoles</option>

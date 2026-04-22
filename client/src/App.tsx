@@ -105,7 +105,7 @@ const AppContent: React.FC = () => {
     <div className="flex h-screen bg-gray-100">
       <Sidebar currentClinic={selectedClinic?.name} />
       
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto main-content">
         <Routes>
           <Route path="/clinics" element={<ClinicsList onSelectClinic={handleSelectClinic} />} />
           

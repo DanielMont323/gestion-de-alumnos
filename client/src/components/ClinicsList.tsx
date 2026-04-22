@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { clinicsAPI } from '../services/api';
-import { Building2, MapPin, Users, ChevronRight, Sun, Moon, Coffee } from 'lucide-react';
+import { Building2, MapPin, Users, ChevronRight, Sun, Moon, Coffee, Plus } from 'lucide-react';
+import AddClinicForm from './AddClinicForm';
 
 interface Clinic {
   _id: string;
@@ -25,6 +26,7 @@ const ClinicsList: React.FC<ClinicsListProps> = ({ onSelectClinic }) => {
   const [error, setError] = useState('');
   const [greeting, setGreeting] = useState('');
   const [greetingIcon, setGreetingIcon] = useState<React.ReactNode>(null);
+  const [showAddClinic, setShowAddClinic] = useState(false);
 
   useEffect(() => {
     fetchClinics();
@@ -55,6 +57,10 @@ const ClinicsList: React.FC<ClinicsListProps> = ({ onSelectClinic }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleClinicSuccess = () => {
+    fetchClinics();
   };
 
   const getDayName = () => {
@@ -88,11 +94,11 @@ const ClinicsList: React.FC<ClinicsListProps> = ({ onSelectClinic }) => {
   const todayClinics = getClinicsForToday();
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {/* Bienvenida personalizada */}
-      <div className="bg-white rounded-2xl shadow-sm border border-blue-100 p-8 mb-8 overflow-hidden relative">
-        <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
-          <div className="w-48 h-48 md:w-64 md:h-64 relative flex-shrink-0">
+      <div className="bg-white rounded-2xl shadow-sm border border-blue-100 p-4 md:p-8 mb-8 overflow-hidden relative">
+        <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8 relative z-10">
+          <div className="w-40 h-40 md:w-64 md:h-64 relative flex-shrink-0">
             <div className="absolute inset-0 bg-blue-50 rounded-full animate-pulse opacity-50"></div>
             <img 
               src="/nurse.png" 
@@ -104,31 +110,31 @@ const ClinicsList: React.FC<ClinicsListProps> = ({ onSelectClinic }) => {
           <div className="flex-1 text-center md:text-left">
             <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
               {greetingIcon}
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-800">
+              <h1 className="text-2xl md:text-4xl font-bold text-gray-800">
                 {greeting}
               </h1>
             </div>
             
-            <p className="text-lg text-gray-600 mb-6">
+            <p className="text-base md:text-lg text-gray-600 mb-6">
               La ruta programada para hoy, <span className="font-semibold text-blue-600">{getDayName()}</span>, es la siguiente:
             </p>
 
             {todayClinics.length > 0 ? (
               <div className="space-y-3">
                 {todayClinics.map((clinic, idx) => (
-                  <div key={clinic._id} className="flex items-center gap-3 bg-blue-50 p-4 rounded-xl border border-blue-100">
-                    <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                  <div key={clinic._id} className="flex items-center gap-3 bg-blue-50 p-3 md:p-4 rounded-xl border border-blue-100 text-left">
+                    <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex-shrink-0 flex items-center justify-center font-bold text-sm">
                       {idx + 1}
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-800">{clinic.name}</h3>
-                      <p className="text-sm text-gray-500">{clinic.address}</p>
+                      <h3 className="font-semibold text-gray-800 text-sm md:text-base">{clinic.name}</h3>
+                      <p className="text-xs md:text-sm text-gray-500 line-clamp-1">{clinic.address}</p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 text-gray-600 italic">
+              <div className="bg-gray-50 p-4 md:p-6 rounded-xl border border-gray-200 text-gray-600 italic text-sm md:text-base">
                 No tienes clínicas programadas para el día de hoy. ¡Aprovecha para poner al día tus reportes!
               </div>
             )}
@@ -136,16 +142,25 @@ const ClinicsList: React.FC<ClinicsListProps> = ({ onSelectClinic }) => {
         </div>
         
         {/* Decoración de fondo */}
-        <div className="absolute top-0 right-0 -mt-20 -mr-20 w-64 h-64 bg-blue-50 rounded-full opacity-50"></div>
-        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-48 h-48 bg-blue-50 rounded-full opacity-30"></div>
+        <div className="absolute top-0 right-0 -mt-20 -mr-20 w-48 h-48 md:w-64 md:h-64 bg-blue-50 rounded-full opacity-50"></div>
+        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-32 h-32 md:w-48 md:h-48 bg-blue-50 rounded-full opacity-30"></div>
       </div>
 
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">Todas Mis Clínicas</h2>
-        <p className="text-gray-600">Acceso rápido a la gestión de todos tus centros</p>
+      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-1 md:mb-2">Todas Mis Clínicas</h2>
+          <p className="text-sm md:text-gray-600">Acceso rápido a la gestión de todos tus centros</p>
+        </div>
+        <button
+          onClick={() => setShowAddClinic(true)}
+          className="w-full md:w-auto bg-blue-600 text-white py-2 px-4 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 shadow-sm"
+        >
+          <Plus size={20} />
+          Agregar Clínica
+        </button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {clinics.map((clinic) => (
           <div
             key={clinic._id}
@@ -186,6 +201,13 @@ const ClinicsList: React.FC<ClinicsListProps> = ({ onSelectClinic }) => {
           </div>
         ))}
       </div>
+
+      {showAddClinic && (
+        <AddClinicForm
+          onClose={() => setShowAddClinic(false)}
+          onSuccess={handleClinicSuccess}
+        />
+      )}
 
       {clinics.length === 0 && (
         <div className="text-center py-12">

@@ -97,16 +97,16 @@ const AttendanceTracking: React.FC<AttendanceTrackingProps> = ({
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">
           {clinicName} - Pasar lista
         </h1>
-        <p className="text-gray-600">Registre la asistencia de los alumnos</p>
+        <p className="text-sm text-gray-600">Registre la asistencia de los alumnos</p>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="flex items-center gap-4 mb-6">
+      <div className="bg-white rounded-lg shadow-md p-4 md:p-6 mb-6">
+        <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
           <div className="flex items-center gap-2">
             <Calendar size={20} className="text-gray-600" />
             <label htmlFor="date" className="text-sm font-medium text-gray-700">
@@ -117,41 +117,41 @@ const AttendanceTracking: React.FC<AttendanceTrackingProps> = ({
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              className="flex-1 md:flex-none px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
             />
           </div>
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-gray-600 font-medium">
             {formatDate(selectedDate)}
           </div>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4">
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 text-sm">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg mb-4">
+          <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg mb-4 text-sm">
             {success}
           </div>
         )}
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="overflow-x-auto -mx-4 md:mx-0">
+          <table className="w-full min-w-[500px]">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Alumno
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Grupo
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 md:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Asistió
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  No asistió
+                <th className="px-4 md:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Faltó
                 </th>
               </tr>
             </thead>
@@ -163,15 +163,16 @@ const AttendanceTracking: React.FC<AttendanceTrackingProps> = ({
                 
                 return (
                   <tr key={student._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         {student.name}
                       </div>
+                      <div className="md:hidden text-xs text-gray-500">{student.group}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-600">{student.group}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                    <td className="px-4 md:px-6 py-4 whitespace-nowrap text-center">
                       <label className="flex items-center justify-center cursor-pointer">
                         <input
                           type="radio"
@@ -181,7 +182,7 @@ const AttendanceTracking: React.FC<AttendanceTrackingProps> = ({
                           className="w-4 h-4 text-green-600 focus:ring-green-500"
                         />
                         <CheckCircle
-                          size={20}
+                          size={18}
                           className={`ml-2 ${
                             attendanceRecord?.attended
                               ? 'text-green-600'
@@ -190,19 +191,19 @@ const AttendanceTracking: React.FC<AttendanceTrackingProps> = ({
                         />
                       </label>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                    <td className="px-4 md:px-6 py-4 whitespace-nowrap text-center">
                       <label className="flex items-center justify-center cursor-pointer">
                         <input
                           type="radio"
                           name={`attendance-${student._id}`}
-                          checked={!attendanceRecord?.attended}
+                          checked={attendanceRecord && !attendanceRecord.attended}
                           onChange={() => handleAttendanceChange(student._id, false)}
                           className="w-4 h-4 text-red-600 focus:ring-red-500"
                         />
                         <XCircle
-                          size={20}
+                          size={18}
                           className={`ml-2 ${
-                            !attendanceRecord?.attended
+                            attendanceRecord && !attendanceRecord.attended
                               ? 'text-red-600'
                               : 'text-gray-400'
                           }`}
@@ -226,7 +227,7 @@ const AttendanceTracking: React.FC<AttendanceTrackingProps> = ({
           <button
             onClick={handleSaveAttendance}
             disabled={isSaving || students.length === 0}
-            className="bg-blue-600 text-white py-2 px-6 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            className="w-full md:w-auto bg-blue-600 text-white py-2.5 px-6 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shadow-sm font-medium"
           >
             <Save size={20} />
             {isSaving ? 'Guardando...' : 'Guardar asistencia'}
