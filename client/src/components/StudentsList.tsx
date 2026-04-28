@@ -7,7 +7,9 @@ import {
   Edit, 
   Trash2, 
   ChevronLeft, 
-  ChevronRight 
+  ChevronRight,
+  Settings,
+  Printer
 } from 'lucide-react';
 
 interface Student {
@@ -26,6 +28,7 @@ interface StudentsListProps {
   onAddStudent: () => void;
   onViewStudent: (student: Student) => void;
   onEditStudent: (student: Student) => void;
+  onManageCriteria: () => void;
 }
 
 const StudentsList: React.FC<StudentsListProps> = ({
@@ -34,6 +37,7 @@ const StudentsList: React.FC<StudentsListProps> = ({
   onAddStudent,
   onViewStudent,
   onEditStudent,
+  onManageCriteria,
 }) => {
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,8 +48,9 @@ const StudentsList: React.FC<StudentsListProps> = ({
   const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
+    console.log('StudentsList useEffect triggered:', { clinicId, currentPage, searchTerm, selectedGroup });
     fetchStudents();
-  }, [clinicId, currentPage, searchTerm, selectedGroup]);
+  }, [clinicId, currentPage, searchTerm, selectedGroup]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchStudents = async () => {
     try {
@@ -58,11 +63,26 @@ const StudentsList: React.FC<StudentsListProps> = ({
       if (searchTerm) params.search = searchTerm;
       if (selectedGroup !== 'Todos los grupos') params.group = selectedGroup;
 
+      console.log('Fetching students with params:', params);
+      console.log('Selected group:', selectedGroup);
+      console.log('Clinic ID:', clinicId);
+
+      if (!clinicId) {
+        console.log('No clinic ID provided, skipping fetch');
+        setStudents([]);
+        setIsLoading(false);
+        return;
+      }
+
       const response = await studentsAPI.getByClinic(clinicId, params);
+      console.log('API Response:', response.data);
+      
       if (response.data && response.data.students) {
+        console.log('Students found:', response.data.students.length);
         setStudents(response.data.students);
         setTotalPages(response.data.totalPages || 1);
       } else {
+        console.log('No students found in response');
         setStudents([]);
         setTotalPages(1);
       }
@@ -94,6 +114,117 @@ const StudentsList: React.FC<StudentsListProps> = ({
     return 'text-red-600';
   };
 
+  const handlePrint = (type: 'clinic' | 'group') => {
+    // Get all students for printing (not just current page)
+    const fetchAllStudentsForPrint = async () => {
+      try {
+        const params: any = {};
+        
+        if (type === 'clinic') {
+          // Get all students from clinic
+          params.clinicId = clinicId;
+          params.limit = 1000; // Large number to get all students
+        } else {
+          // Get filtered students (current search and group)
+          params.clinicId = clinicId;
+          params.limit = 1000;
+          if (searchTerm) params.search = searchTerm;
+          if (selectedGroup !== 'Todos los grupos') params.group = selectedGroup;
+        }
+
+        const response = await studentsAPI.getAll(params);
+        const studentsToPrint = response.data.students || response.data;
+        
+        // Create print content
+        const printTitle = type === 'clinic' 
+          ? `Lista de Alumnos - ${clinicName}` 
+          : `Lista de Alumnos - ${clinicName} - ${selectedGroup}`;
+        
+        const printContent = generatePrintContent(printTitle, studentsToPrint);
+        
+        // Create print window
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(printContent);
+          printWindow.document.close();
+          printWindow.focus();
+          printWindow.print();
+          printWindow.close();
+        }
+      } catch (err: any) {
+        console.error('Error fetching students for print:', err);
+        alert('Error al generar la impresión');
+      }
+    };
+
+    fetchAllStudentsForPrint();
+  };
+
+  const generatePrintContent = (title: string, students: Student[]) => {
+    const formatDate = (dateString: string) => {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+
+    const studentsHTML = students.map(student => `
+      <tr>
+        <td style="padding: 8px; border: 1px solid #ddd;">${student.name}</td>
+        <td style="padding: 8px; border: 1px solid #ddd;">${student.group}</td>
+        <td style="padding: 8px; border: 1px solid #ddd;">${student.attendancePercentage}%</td>
+        <td style="padding: 8px; border: 1px solid #ddd;">${student.performance}%</td>
+        <td style="padding: 8px; border: 1px solid #ddd;">${student.presentation}%</td>
+        <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(student.startDate)}</td>
+      </tr>
+    `).join('');
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${title}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          h1 { text-align: center; color: #333; margin-bottom: 20px; }
+          .info { margin-bottom: 20px; color: #666; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th { background-color: #f8f9fa; padding: 10px; border: 1px solid #ddd; text-align: left; font-weight: bold; }
+          td { padding: 8px; border: 1px solid #ddd; }
+          .footer { margin-top: 30px; text-align: center; color: #666; font-size: 12px; }
+          @media print {
+            body { margin: 10px; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <h1>${title}</h1>
+        <div class="info">
+          <p><strong>Total de alumnos:</strong> ${students.length}</p>
+          <p><strong>Fecha de impresión:</strong> ${new Date().toLocaleDateString('es-MX')}</p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Grupo</th>
+              <th>Asistencia</th>
+              <th>Desempeño</th>
+              <th>Presentación</th>
+              <th>Fecha de Inicio</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${studentsHTML}
+          </tbody>
+        </table>
+        <div class="footer">
+          <p>Sistema de Gestión de Alumnos - Generado el ${new Date().toLocaleString('es-MX')}</p>
+        </div>
+      </body>
+      </html>
+    `;
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -110,13 +241,39 @@ const StudentsList: React.FC<StudentsListProps> = ({
             <h1 className="text-xl md:text-2xl font-bold text-gray-800">{clinicName}</h1>
             <p className="text-sm text-gray-600">Lista de alumnos</p>
           </div>
-          <button
-            onClick={onAddStudent}
-            className="w-full md:w-auto bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-          >
-            <Plus size={20} />
-            Agregar alumno
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={onManageCriteria}
+              className="w-full md:w-auto bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+              title="Configurar criterios de evaluación"
+            >
+              <Settings size={20} />
+              Criterios
+            </button>
+            <button
+              onClick={onAddStudent}
+              className="w-full md:w-auto bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+            >
+              <Plus size={20} />
+              Agregar alumno
+            </button>
+            <button
+              onClick={() => handlePrint('clinic')}
+              className="w-full md:w-auto bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+              title="Imprimir lista completa de la clínica"
+            >
+              <Printer size={20} />
+              Imprimir Clínica
+            </button>
+            <button
+              onClick={() => handlePrint('group')}
+              className="w-full md:w-auto bg-orange-600 text-white py-2 px-4 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2"
+              title="Imprimir lista del grupo filtrado"
+            >
+              <Printer size={20} />
+              Imprimir Grupo
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-col md:flex-row gap-4 mb-4">
@@ -136,9 +293,8 @@ const StudentsList: React.FC<StudentsListProps> = ({
             className="w-full md:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           >
             <option>Todos los grupos</option>
-            <option>Lunes a Miércoles</option>
-            <option>Lunes a Jueves</option>
-            <option>Jueves a Viernes</option>
+            <option>Lunes a Miercoles</option>
+            <option>Jueves-Viernes</option>
           </select>
         </div>
       </div>

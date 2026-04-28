@@ -15,9 +15,11 @@ router.get('/', async (req, res) => {
     if (studentId) query.student = studentId;
     if (clinicId) query.clinic = clinicId;
     if (date) {
+      // Fix timezone issue by creating date at noon in local timezone
       const startDate = new Date(date);
+      startDate.setHours(12, 0, 0, 0); // Set to noon to avoid timezone issues
       const endDate = new Date(date);
-      endDate.setDate(endDate.getDate() + 1);
+      endDate.setHours(13, 0, 0, 0); // 1 PM to avoid timezone issues
       query.date = { $gte: startDate, $lt: endDate };
     }
     
@@ -72,13 +74,20 @@ router.post('/', [
 
     const { student, clinic, date, attended } = req.body;
 
+    // Fix timezone issue by creating date at noon in local timezone
+    const attendanceDate = new Date(date);
+    attendanceDate.setHours(12, 0, 0, 0); // Set to noon to avoid timezone issues
+
     // Check if attendance record already exists
-    const existingAttendance = await Attendance.findOne({ student, date });
+    const existingAttendance = await Attendance.findOne({ student, date: attendanceDate });
     
     if (existingAttendance) {
       // Update existing record
       existingAttendance.attended = attended;
       await existingAttendance.save();
+      
+      // Update student attendance percentage
+      await updateStudentAttendancePercentage(student);
       
       const populatedAttendance = await Attendance.findById(existingAttendance._id)
         .populate('student', 'name group')
@@ -87,8 +96,11 @@ router.post('/', [
       return res.json(populatedAttendance);
     } else {
       // Create new record
-      const attendance = new Attendance({ student, clinic, date, attended });
+      const attendance = new Attendance({ student, clinic, date: attendanceDate, attended });
       await attendance.save();
+
+      // Update student attendance percentage
+      await updateStudentAttendancePercentage(student);
 
       const populatedAttendance = await Attendance.findById(attendance._id)
         .populate('student', 'name group')
@@ -106,6 +118,10 @@ router.post('/bulk', async (req, res) => {
   try {
     const { clinicId, date, attendanceRecords } = req.body;
 
+    // Fix timezone issue by creating date at noon in local timezone
+    const attendanceDate = new Date(date);
+    attendanceDate.setHours(12, 0, 0, 0); // Set to noon to avoid timezone issues
+
     const results = [];
     
     for (const record of attendanceRecords) {
@@ -113,7 +129,7 @@ router.post('/bulk', async (req, res) => {
       
       const existingAttendance = await Attendance.findOne({ 
         student: studentId, 
-        date 
+        date: attendanceDate
       });
       
       if (existingAttendance) {
@@ -124,7 +140,7 @@ router.post('/bulk', async (req, res) => {
         const attendance = new Attendance({
           student: studentId,
           clinic: clinicId,
-          date,
+          date: attendanceDate,
           attended
         });
         await attendance.save();
@@ -151,17 +167,22 @@ router.post('/bulk', async (req, res) => {
 // Helper function to update student attendance percentage
 async function updateStudentAttendancePercentage(studentId) {
   try {
-    const totalSessions = await Attendance.countDocuments({ student: studentId });
     const attendedSessions = await Attendance.countDocuments({ 
       student: studentId, 
       attended: true 
     });
     
-    const attendancePercentage = totalSessions > 0 
-      ? Math.round((attendedSessions / totalSessions) * 100)
-      : 0;
+    // Use 25 days as the base for 100% attendance
+    const totalGroupDays = 25;
+    const attendancePercentage = Math.round((attendedSessions / totalGroupDays) * 100);
     
-    await Student.findByIdAndUpdate(studentId, { attendancePercentage });
+    console.log(`Updating attendance for student ${studentId}: ${attendedSessions}/${totalGroupDays} = ${attendancePercentage}%`);
+    
+    await Student.findByIdAndUpdate(studentId, { 
+      attendancePercentage,
+      attendanceDays: attendedSessions,
+      totalGroupDays: totalGroupDays
+    });
   } catch (error) {
     console.error('Error updating student attendance percentage:', error);
   }

@@ -41,6 +41,9 @@ export const clinicsAPI = {
   create: (data: any) => api.post('/clinics', data),
   update: (id: string, data: any) => api.put(`/clinics/${id}`, data),
   delete: (id: string) => api.delete(`/clinics/${id}`),
+  addGroup: (clinicId: string, groupData: any) => api.post(`/clinics/${clinicId}/groups`, groupData),
+  updateGroup: (clinicId: string, groupId: string, groupData: any) => api.put(`/clinics/${clinicId}/groups/${groupId}`, groupData),
+  deleteGroup: (clinicId: string, groupId: string) => api.delete(`/clinics/${clinicId}/groups/${groupId}`),
 };
 
 export const studentsAPI = {
@@ -76,6 +79,11 @@ export const reportsAPI = {
   getStudentReport: (studentId: string) => api.get(`/reports/student/${studentId}`),
   getClinicAttendance: (clinicId: string, month: number, year: number) =>
     api.get(`/reports/clinic/${clinicId}/attendance/${month}/${year}`),
+};
+
+export const evaluationCriteriaAPI = {
+  getByClinic: (clinicId: string) => api.get(`/evaluation-criteria/clinic/${clinicId}`),
+  updateByClinic: (clinicId: string, criteria: any) => api.put(`/evaluation-criteria/clinic/${clinicId}`, criteria),
 };
 
 export default api;

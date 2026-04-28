@@ -60,10 +60,27 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({
     setError('');
 
     try {
+      // Fix timezone issue by creating date at noon in local timezone
+      console.log('Frontend formData.startDate:', formData.startDate);
+      
+      // Parse the date correctly to avoid timezone issues
+      const dateParts = formData.startDate.split('-');
+      const year = parseInt(dateParts[0]);
+      const month = parseInt(dateParts[1]) - 1; // JS months are 0-indexed
+      const day = parseInt(dateParts[2]);
+      
+      const startDate = new Date(year, month, day, 12, 0, 0, 0); // Local time at noon
+      console.log('Frontend created Date:', startDate);
+      console.log('Frontend Date after setting hours:', startDate.toString());
+      
+      // Send as YYYY-MM-DD string
+      const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      console.log('Frontend sending to API:', dateString);
+      
       await studentsAPI.create({
         ...formData,
         clinic: clinicId,
-        startDate: new Date(formData.startDate),
+        startDate: dateString, // Send as YYYY-MM-DD string
       });
       onSuccess();
       onClose();

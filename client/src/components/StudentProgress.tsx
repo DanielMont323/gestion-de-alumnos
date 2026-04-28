@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { studentsAPI, evaluationsAPI, attendanceAPI } from '../services/api';
+import { studentsAPI, evaluationsAPI, attendanceAPI, evaluationCriteriaAPI } from '../services/api';
 import { User, Calendar, Target, TrendingUp, Award, BookOpen, Clock, CheckSquare } from 'lucide-react';
 
 interface Student {
@@ -29,6 +29,16 @@ interface GroupInfo {
   activities: number;
 }
 
+interface EvaluationCriteria {
+  workbookActivitiesMax: number;
+  trainingHoursMax: number;
+  workbookMultiplier: number;
+  trainingMultiplier: number;
+  attendanceDaysMax: number;
+  performanceMax: number;
+  presentationMax: number;
+}
+
 interface StudentProgressProps {
   studentId: string;
   clinicName: string;
@@ -38,6 +48,15 @@ const StudentProgress: React.FC<StudentProgressProps> = ({ studentId, clinicName
   const [student, setStudent] = useState<Student | null>(null);
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
   const [groupInfo, setGroupInfo] = useState<GroupInfo | null>(null);
+  const [criteria, setCriteria] = useState<EvaluationCriteria>({
+    workbookActivitiesMax: 39,
+    trainingHoursMax: 55,
+    workbookMultiplier: 2.56,
+    trainingMultiplier: 1.82,
+    attendanceDaysMax: 39,
+    performanceMax: 100,
+    presentationMax: 100,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -45,9 +64,24 @@ const StudentProgress: React.FC<StudentProgressProps> = ({ studentId, clinicName
     fetchStudentData();
   }, [studentId]);
 
+  const fetchCriteria = async () => {
+    try {
+      const studentResponse = await studentsAPI.getById(studentId);
+      const studentData = studentResponse.data;
+      const clinicId = typeof studentData.clinic === 'string' ? studentData.clinic : (studentData.clinic as any)?._id;
+      
+      const criteriaResponse = await evaluationCriteriaAPI.getByClinic(clinicId || '');
+      console.log('📊 StudentProgress - Criteria loaded:', criteriaResponse.data);
+      setCriteria(criteriaResponse.data);
+    } catch (err: any) {
+      console.error('Error loading criteria:', err);
+    }
+  };
+
   const fetchStudentData = async () => {
     try {
       const studentResponse = await studentsAPI.getById(studentId);
+      await fetchCriteria(); // Load criteria after getting student data
       setStudent(studentResponse.data);
 
       const evaluationResponse = await evaluationsAPI.getLatestByStudent(studentId);
@@ -130,15 +164,15 @@ const StudentProgress: React.FC<StudentProgressProps> = ({ studentId, clinicName
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
                 <p className="text-sm text-gray-500 mb-1">Total de días del grupo</p>
-                <p className="text-lg font-medium text-gray-800">24 días</p>
+                <p className="text-lg font-medium text-gray-800">{criteria.attendanceDaysMax} días</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500 mb-1">Total de actividades</p>
-                <p className="text-lg font-medium text-gray-800">12 actividades</p>
+                <p className="text-lg font-medium text-gray-800">{criteria.workbookActivitiesMax} actividades</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500 mb-1">Meta capacitación</p>
-                <p className="text-lg font-medium text-gray-800">50 horas</p>
+                <p className="text-lg font-medium text-gray-800">{criteria.trainingHoursMax} horas</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500 mb-1">Horas completadas</p>
@@ -156,7 +190,7 @@ const StudentProgress: React.FC<StudentProgressProps> = ({ studentId, clinicName
                     <span className="text-sm font-medium text-gray-700">Asistencia</span>
                   </div>
                   <span className={`text-sm font-bold ${getProgressTextColor(student.attendancePercentage)}`}>
-                    {student.attendancePercentage}% ({Math.round(student.attendancePercentage * 24 / 100)}/24)
+                    {student.attendancePercentage}% ({Math.round(student.attendancePercentage * criteria.attendanceDaysMax / 100)}/{criteria.attendanceDaysMax})
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
@@ -210,7 +244,7 @@ const StudentProgress: React.FC<StudentProgressProps> = ({ studentId, clinicName
                     <span className="text-sm font-medium text-gray-700">Cuadernillo</span>
                   </div>
                   <span className={`text-sm font-bold ${getProgressTextColor(student.workbookProgress)}`}>
-                    {student.workbookProgress}% ({Math.round(student.workbookProgress * 12 / 100)}/12)
+                    {student.workbookProgress}% ({Math.round(student.workbookProgress * criteria.workbookActivitiesMax / 100)}/{criteria.workbookActivitiesMax})
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
@@ -227,14 +261,14 @@ const StudentProgress: React.FC<StudentProgressProps> = ({ studentId, clinicName
                     <Clock size={16} className="text-indigo-600" />
                     <span className="text-sm font-medium text-gray-700">Capacitación constante</span>
                   </div>
-                  <span className={`text-sm font-bold ${getProgressTextColor(Math.min(100, student.trainingHours * 2))}`}>
-                    {Math.min(100, student.trainingHours * 2)}% ({student.trainingHours}/50h)
+                  <span className={`text-sm font-bold ${getProgressTextColor(Math.min(100, student.trainingHours * 100 / criteria.trainingHoursMax))}`}>
+                    {Math.min(100, Math.round(student.trainingHours * 100 / criteria.trainingHoursMax))}% ({student.trainingHours}/{criteria.trainingHoursMax}h)
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div
-                    className={`h-2 rounded-full ${getProgressColor(Math.min(100, student.trainingHours * 2))}`}
-                    style={{ width: `${Math.min(100, student.trainingHours * 2)}%` }}
+                    className={`h-2 rounded-full ${getProgressColor(Math.min(100, Math.round(student.trainingHours * 100 / criteria.trainingHoursMax)))}`}
+                    style={{ width: `${Math.min(100, Math.round(student.trainingHours * 100 / criteria.trainingHoursMax))}%` }}
                   ></div>
                 </div>
               </div>

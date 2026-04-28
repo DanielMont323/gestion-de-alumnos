@@ -1,6 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { studentsAPI, evaluationsAPI } from '../services/api';
-import { X, Save, Calculator, TrendingUp, Award, BookOpen, Clock } from 'lucide-react';
+import { studentsAPI, evaluationsAPI, evaluationCriteriaAPI } from '../services/api';
+import { 
+  User, 
+  Calendar, 
+  TrendingUp, 
+  BookOpen, 
+  Clock, 
+  Calculator, 
+  Save, 
+  X,
+  Award,
+  Info
+} from 'lucide-react';
 
 interface Student {
   _id: string;
@@ -10,6 +21,16 @@ interface Student {
   workbookProgress: number;
   trainingHours: number;
   clinic: string;
+}
+
+interface EvaluationCriteria {
+  workbookActivitiesMax: number;
+  trainingHoursMax: number;
+  workbookMultiplier: number;
+  trainingMultiplier: number;
+  attendanceDaysMax: number;
+  performanceMax: number;
+  presentationMax: number;
 }
 
 interface StudentEvaluationProps {
@@ -26,6 +47,18 @@ const StudentEvaluation: React.FC<StudentEvaluationProps> = ({
   onSuccess,
 }) => {
   const [student, setStudent] = useState<Student | null>(null);
+  const [criteria, setCriteria] = useState<EvaluationCriteria>({
+    workbookActivitiesMax: 26,
+    trainingHoursMax: 30,
+    workbookMultiplier: parseFloat((100 / 26).toFixed(2)),
+    trainingMultiplier: parseFloat((100 / 30).toFixed(2)),
+    attendanceDaysMax: 25,
+    performanceMax: 100,
+    presentationMax: 100,
+  });
+
+  // Log initial criteria
+  console.log('🎯 Initial criteria state:', criteria);
   const [formData, setFormData] = useState({
     performance: '',
     presentation: '',
@@ -42,18 +75,130 @@ const StudentEvaluation: React.FC<StudentEvaluationProps> = ({
 
   useEffect(() => {
     fetchStudent();
-  }, [studentId]);
+  }, [studentId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (student) {
+      fetchCriteria();
+    }
+  }, [student]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Force refresh criteria on component mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (student) {
+        console.log('🔄 Force refreshing criteria on mount...');
+        fetchCriteria();
+      }
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [studentId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Add event listener for criteria changes
+  useEffect(() => {
+    const handleCriteriaUpdate = (event: any) => {
+      console.log('🔔 criteriaUpdated event received:', event.detail);
+      console.log('🔔 Current student clinic ID:', typeof student?.clinic === 'string' ? student.clinic : (student?.clinic as any)?._id);
+      console.log('🔔 Event clinic ID:', event.detail.clinicId);
+      
+      // Check if the event is for the same clinic
+      const currentClinicId = typeof student?.clinic === 'string' ? student.clinic : (student?.clinic as any)?._id;
+      if (event.detail.clinicId === currentClinicId) {
+        console.log('🔔 Clinic IDs match, fetching new criteria...');
+        fetchCriteria();
+      } else {
+        console.log('🔔 Clinic IDs do not match, ignoring event');
+      }
+    };
+
+    console.log('Setting up criteriaUpdated event listener');
+    window.addEventListener('criteriaUpdated', handleCriteriaUpdate);
+    return () => {
+      console.log('Cleaning up criteriaUpdated event listener');
+      window.removeEventListener('criteriaUpdated', handleCriteriaUpdate);
+    };
+  }, [student]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Also add a periodic refresh as fallback
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (student) {
+        fetchCriteria();
+      }
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [student]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     calculateMetrics();
-  }, [formData, student]);
+  }, [formData, student, criteria]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchStudent = async () => {
     try {
       const response = await studentsAPI.getById(studentId);
-      setStudent(response.data);
+      const studentData = response.data;
+      setStudent(studentData);
+      
+      // Load existing evaluation data into form
+      setFormData({
+        performance: studentData.performance?.toString() || '',
+        presentation: studentData.presentation?.toString() || '',
+        workbookActivities: studentData.workbookProgress?.toString() || '',
+        trainingHours: studentData.trainingHours?.toString() || '',
+      });
+      
+      console.log('📝 Form data loaded from student:', {
+        performance: studentData.performance,
+        presentation: studentData.presentation,
+        workbookProgress: studentData.workbookProgress,
+        trainingHours: studentData.trainingHours
+      });
     } catch (err: any) {
       setError('Error al cargar los datos del alumno');
+    }
+  };
+
+  const fetchCriteria = async () => {
+    try {
+      const clinicId = typeof student?.clinic === 'string' ? student.clinic : (student?.clinic as any)?._id;
+      console.log('Fetching criteria for clinic:', clinicId);
+      console.log('Student data:', student);
+      const response = await evaluationCriteriaAPI.getByClinic(clinicId || '');
+      console.log('API Response:', response);
+      console.log('Criteria received:', response.data);
+      
+      // Force update criteria state
+      const newCriteria = response.data;
+      console.log('🔄 Updating criteria state to:', newCriteria);
+      setCriteria(newCriteria);
+      console.log('✅ Criteria state updated');
+      console.log('📊 New values:', {
+        attendanceDaysMax: newCriteria.attendanceDaysMax,
+        workbookActivitiesMax: newCriteria.workbookActivitiesMax,
+        trainingHoursMax: newCriteria.trainingHoursMax
+      });
+      
+      // Force a re-render to update the UI
+      setTimeout(() => {
+        console.log('🔄 Forcing UI update with criteria:', {
+          attendanceDaysMax: newCriteria.attendanceDaysMax,
+          workbookActivitiesMax: newCriteria.workbookActivitiesMax,
+          trainingHoursMax: newCriteria.trainingHoursMax
+        });
+      }, 100);
+      
+      // Recalculate metrics with new criteria
+      if (formData.workbookActivities || formData.trainingHours) {
+        setTimeout(() => {
+          calculateMetrics();
+        }, 100);
+      }
+    } catch (err: any) {
+      console.error('Error loading criteria:', err);
+      console.error('Error details:', err.response?.data);
+      // Use default criteria if API fails
     }
   };
 
@@ -61,8 +206,17 @@ const StudentEvaluation: React.FC<StudentEvaluationProps> = ({
     if (!student) return;
 
     const attendance = student.attendancePercentage;
-    const workbook = Math.min(100, (Number(formData.workbookActivities) || 0) * 10);
-    const constantTraining = Math.min(100, (Number(formData.trainingHours) || 0) * 2);
+    const workbook = Math.min(100, (Number(formData.workbookActivities) || 0) * criteria.workbookMultiplier);
+    const constantTraining = Math.min(100, (Number(formData.trainingHours) || 0) * criteria.trainingMultiplier);
+
+    console.log('Calculating metrics:', {
+      workbookActivities: formData.workbookActivities,
+      trainingHours: formData.trainingHours,
+      workbookMultiplier: criteria.workbookMultiplier,
+      trainingMultiplier: criteria.trainingMultiplier,
+      workbook,
+      constantTraining
+    });
 
     setCalculatedMetrics({ attendance, workbook, constantTraining });
   };
@@ -129,6 +283,58 @@ const StudentEvaluation: React.FC<StudentEvaluationProps> = ({
           <div className="mb-6 p-4 bg-gray-50 rounded-lg">
             <h3 className="font-semibold text-gray-800 mb-2">{student.name}</h3>
             <p className="text-sm text-gray-600">Grupo: {student.group}</p>
+            
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <h4 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                <Info size={16} />
+                Criterios de Evaluación Activos
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="bg-white p-3 rounded border">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Calendar size={14} className="text-green-600" />
+                    <span className="text-sm font-medium text-gray-700">Asistencia</span>
+                  </div>
+                  <div className="text-lg font-bold text-green-600">{criteria.attendanceDaysMax}</div>
+                  <div className="text-xs text-gray-600">días = 100%</div>
+                </div>
+                <div className="bg-white p-3 rounded border">
+                  <div className="flex items-center gap-2 mb-1">
+                    <TrendingUp size={14} className="text-orange-600" />
+                    <span className="text-sm font-medium text-gray-700">Desempeño</span>
+                  </div>
+                  <div className="text-lg font-bold text-orange-600">{criteria.performanceMax}</div>
+                  <div className="text-xs text-gray-600">puntos = 100%</div>
+                </div>
+                <div className="bg-white p-3 rounded border">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Award size={14} className="text-pink-600" />
+                    <span className="text-sm font-medium text-gray-700">Presentación</span>
+                  </div>
+                  <div className="text-lg font-bold text-pink-600">{criteria.presentationMax}</div>
+                  <div className="text-xs text-gray-600">puntos = 100%</div>
+                </div>
+                <div className="bg-white p-3 rounded border">
+                  <div className="flex items-center gap-2 mb-1">
+                    <BookOpen size={14} className="text-blue-600" />
+                    <span className="text-sm font-medium text-gray-700">Actividades del Cuadernillo</span>
+                  </div>
+                  <div className="text-lg font-bold text-blue-600">{criteria.workbookActivitiesMax}</div>
+                  <div className="text-xs text-gray-600">actividades = 100%</div>
+                </div>
+                <div className="bg-white p-3 rounded border">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock size={14} className="text-purple-600" />
+                    <span className="text-sm font-medium text-gray-700">Horas de Capacitación</span>
+                  </div>
+                  <div className="text-lg font-bold text-purple-600">{criteria.trainingHoursMax}</div>
+                  <div className="text-xs text-gray-600">horas = 100%</div>
+                </div>
+              </div>
+              <div className="mt-3 p-2 bg-white rounded border text-xs text-gray-500">
+                💡 Estos criterios se actualizan automáticamente desde la configuración de la clínica
+              </div>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -227,7 +433,7 @@ const StudentEvaluation: React.FC<StudentEvaluationProps> = ({
                   <div className="text-2xl font-bold text-green-600">
                     {calculatedMetrics.workbook}%
                   </div>
-                  <div className="text-xs text-gray-600">10 actividades = 100%</div>
+                  <div className="text-xs text-gray-600">{criteria.workbookActivitiesMax} actividades = 100%</div>
                 </div>
 
                 <div className="bg-purple-50 p-4 rounded-lg">
@@ -238,7 +444,7 @@ const StudentEvaluation: React.FC<StudentEvaluationProps> = ({
                   <div className="text-2xl font-bold text-purple-600">
                     {calculatedMetrics.constantTraining}%
                   </div>
-                  <div className="text-xs text-gray-600">50 horas = 100%</div>
+                  <div className="text-xs text-gray-600">{criteria.trainingHoursMax} horas = 100%</div>
                 </div>
               </div>
             </div>
